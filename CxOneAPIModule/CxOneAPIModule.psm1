@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     7.6
-    Date:        01/08/2025
+    Version:     7.7
+    Date:        04/03/2026
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -43,6 +43,7 @@
     7.4        Added function to return scan between two dates filter by status + changed scan function names
     7.5        Add function to get scans filtered by hash of projects as returned by Get-Projects methods
     7.6        Add option to retrieve Application risk
+    7.7        Updated SSCS results to identify Secrets vs Scorecard and change counters from Secrets to SSCS
     
 .Description
     The following functions are available for this module
@@ -1724,6 +1725,7 @@ class SscsResult : Result {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
     
+    [string]$Type
     [string]$RuleId
     [string]$RuleName
     [string]$FileName
@@ -1742,13 +1744,14 @@ class SscsResult : Result {
     
     SscsResult() {}
 
-    SscsResult ([PSCustomObject]$result): base($result) { $this.SetVariables($result) }
+    SscsResult ([String]$type, [PSCustomObject]$result): base($result) { $this.SetVariables($type, $result) }
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
     
-    [void] Hidden SetVariables([PSCustomObject]$result) {
+    [void] Hidden SetVariables([String]$type,[PSCustomObject]$result) {
+        $this.Type = $type
         $this.RuleId = $result.data.ruleId
         $this.RuleName = $result.data.ruleName
         $this.FileName = $result.data.fileName
@@ -1814,8 +1817,8 @@ Class Results {
                     "kics" { $this.ResultsList.Add([KicsResult]::new($r)) }
                     "containers" { $this.ResultsList.Add([ContainerResult]::new($r)) }
                     "sca" { $this.ResultsList.Add([ScaResult]::new($r)) }
-                    "sscs-scorecard" { $this.ResultsList.Add([SscsResult]::new($r)) }
-                    "sscs-secret-detection" { $this.ResultsList.Add([SscsResult]::new($r)) }
+                    "sscs-scorecard" { $this.ResultsList.Add([SscsResult]::new("scorecard",$r)) }
+                    "sscs-secret-detection" { $this.ResultsList.Add([SscsResult]::new("secret",$r)) }
                     default { $this.ResultsList.Add([Result]::new($r)) }
                 }
             }
@@ -1844,7 +1847,7 @@ class SeverityCount {
     [HashTable]$Sca
     [HashTable]$Packages
     [HashTable]$Api
-    [HashTable]$Secrets   
+    [HashTable]$SSCS  
     [HashTable]$Containers
     
     #endregion    
@@ -1893,8 +1896,8 @@ class SeverityCount {
         $this.Api = $this.CreateHashAndIncrementTotal($summary.apiSecCounters.totalCounter)
         $this.SetCounts($summary.apiSecCounters.severityCounters, $this.Api)
 
-        $this.Secrets = $this.CreateHashAndIncrementTotal($summary.microEnginesCounters.totalCounter)
-        $this.SetCounts($summary.microEnginesCounters.severityCounters, $this.Secrets)
+        $this.SSCS = $this.CreateHashAndIncrementTotal($summary.microEnginesCounters.totalCounter)
+        $this.SetCounts($summary.microEnginesCounters.severityCounters, $this.SSCS)
 
         $this.Containers = $this.CreateHashAndIncrementTotal($summary.containersCounters.totalCounter)
         $this.SetCounts($summary.containersCounters.severityCounters, $this.Containers)
