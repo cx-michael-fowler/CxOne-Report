@@ -21,8 +21,8 @@ Report
     
 
 .Notes
-Version:     1.0
-Date:        07/08/2025
+Version:     1.1
+Date:        05/03/2026
 Written by:  Michael Fowler
 Contact:     michael.fowler@checkmarx.com
 
@@ -30,6 +30,7 @@ Change Log
 Version    Detail
 -----------------
 1.0        Original version
+1.1        Updated to rename Secrets to SSCS
 
   
 .PARAMETER help
@@ -239,12 +240,12 @@ Begin {
                 Api_Medium = $_.Value.Api.Medium
                 Api_Low = $_.Value.Api.Low
                 Api_Info = $_.Value.Api.Info
-                Secrets_Total_Vulnerabilties = $_.Value.Secrets.Total
-                Secrets_Critical = $_.Value.Secrets.Critical
-                Secrets_High = $_.Value.Secrets.High
-                Secrets_Medium = $_.Value.Secrets.Medium
-                Secrets_Low = $_.Value.Secrets.Low
-                Secrets_Info = $_.Value.Secrets.Info
+                SSCS_Total_Vulnerabilties = $_.Value.SSCS.Total
+                SSCS_Critical = $_.Value.SSCS.Critical
+                SSCS_High = $_.Value.SSCS.High
+                SSCS_Medium = $_.Value.SSCS.Medium
+                SSCS_Low = $_.Value.SSCS.Low
+                SSCS_Info = $_.Value.SSCS.Info
                 Containers_Total_Vulnerabilties = $_.Value.Containers.Total
                 Containers_Critical = $_.Value.Containers.Critical
                 Containers_High = $_.Value.Containers.High
