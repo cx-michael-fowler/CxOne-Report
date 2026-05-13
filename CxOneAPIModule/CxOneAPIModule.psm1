@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     7.7
-    Date:        04/03/2026
+    Version:     8.0
+    Date:        14/05/2026
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -44,6 +44,9 @@
     7.5        Add function to get scans filtered by hash of projects as returned by Get-Projects methods
     7.6        Add option to retrieve Application risk
     7.7        Updated SSCS results to identify Secrets vs Scorecard and change counters from Secrets to SSCS
+    7.8        Added -UseBasicParsing switch to all Invoke-WebRequest and Invoke-RestMethod calls
+    7.9        Added ReCalc Status field to scan object
+    8.0        Updated serializer to allow for larger data sets
     
 .Description
     The following functions are available for this module
@@ -58,7 +61,7 @@
             CxOneConnObj - a Checkmarx One connection object
             noerror - switch to ignore error hanlder and rethrow the error
         Examplle 
-            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers } $conn
+            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
     
     New-Connection
         Details
@@ -765,7 +768,7 @@ class CxOneConnection {
             refresh_token = $apikey
         }
         try {
-            $accessToken = (Invoke-RestMethod -Uri $uri -Method POST -Body $body).access_token
+            $accessToken = (Invoke-RestMethod -Uri $uri -Method POST -Body $body -UseBasicParsing).access_token
         }
         catch {
             Write-Verbose "Error authenticating."
@@ -965,8 +968,11 @@ class Projects {
                 $projectIds -split "," | ForEach-Object { $uri += "&ids=$([uri]::EscapeUriString($_))" }
             }
             
-            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers} $conn
-            $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response) 
+            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
+            $serializer = [System.Web.Script.Serialization.JavaScriptSerializer]::New()
+            $serializer.MaxJsonLength = [int]::MaxValue
+            $json = $serializer.DeserializeObject($response)
+
         
             if ($this.Offset -eq 0) { 
                 $this.FilteredTotalCount = $json.filteredTotalCount
@@ -992,7 +998,7 @@ class Projects {
             
             do {
                 $uri = "$($conn.baseUri)/api/projects/branches?offset=$($this.Offset)&limit=$($this.Limit)&project-id=$p"
-                $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers } $conn
+                $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
 
                 if ($response -ne "null") {
                     $this.ProjectsHash[$p].AddBranches($response)
@@ -1129,8 +1135,10 @@ class Applications {
             $uri = "$($conn.baseUri)/api/applications/?offset=$($this.Offset)&limit=$($this.Limit)"
         
             
-            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers} $conn
-            $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response) 
+            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
+            $serializer = [System.Web.Script.Serialization.JavaScriptSerializer]::New()
+            $serializer.MaxJsonLength = [int]::MaxValue
+            $json = $serializer.DeserializeObject($response) 
         
             if ($this.Offset -eq 0) { 
                 $this.FilteredTotalCount = $json.filteredTotalCount
@@ -1152,7 +1160,7 @@ class Applications {
         Write-Verbose "Retrieving applications risks"
         
         $uri = "$($conn.baseUri)/api/risk-management/summary"
-        $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers} $conn
+        $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
         foreach ($app in $response.summary) { $this.ApplicationsHash[$app.id].AddRisk($app) }
         
         Write-Verbose "Applications risks retrived"
@@ -1233,6 +1241,7 @@ Class Scan {
     [String]$TagsString
     [String]$SourceType
     [String]$SourceOrigin
+    [String]$RecalcStatus
 
     #endregion    
     #--------------------------------------------------------------------------------------------------------------------------------------
@@ -1299,6 +1308,7 @@ Class Scan {
 
         $this.SourceType = $scan.sourceType
         $this.SourceOrigin = $scan.sourceOrigin
+        $this.RecalcStatus = $scan.recalcStatus
     }
     
     #endregion    
@@ -1362,8 +1372,7 @@ class Scans {
     [void] Hidden GetScansHashByDays([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays, [String]$scanIds) {
         $fromDate = [uri]::EscapeDataString(([datetime]::Today).AddDays(-$scanDays).ToString("yyyy-MM-ddThh:mm:ss.fffffffZ"))
         $this.GetScansHash($conn, $statuses, $fromDate, $null, $null, $null)
-    }
-    
+    } 
     
     [void] Hidden GetScansHash([CxOneConnection]$conn, [String]$statuses, [string]$fromDate, [string]$toDate, 
                                [String]$scanIds, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash) {
@@ -1384,8 +1393,10 @@ class Scans {
             if ($scanIds) { $uri += "&scan-ids=$scanIds" }
             if ($projectsHash) { $uri += "&project-ids=$($projectsHash.keys -join ",")" }
            
-            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers} $conn
-            $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response) 
+            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
+            $serializer = [System.Web.Script.Serialization.JavaScriptSerializer]::New()
+            $serializer.MaxJsonLength = [int]::MaxValue
+            $json = $serializer.DeserializeObject($response)
         
             if ($this.Offset -eq 0) { 
                 $this.FilteredTotalCount = $json.filteredTotalCount
@@ -1434,8 +1445,11 @@ class Scans {
                 if (-NOT [string]::IsNullOrEmpty($branchName)) { $uri += "&branch=$branchName" }
             }
 
-            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers } $conn
-            $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response)
+            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
+            $serializer = [System.Web.Script.Serialization.JavaScriptSerializer]::New()
+            $serializer.MaxJsonLength = [int]::MaxValue
+            $json = $serializer.DeserializeObject($response)
+            
             $scan = $json[$p.projectId]
             if ($null -eq $scan) { $this.ScansHash.Add($p.projectId, $null) }
             else { 
@@ -1807,7 +1821,7 @@ Class Results {
         
             $uri = "$($conn.baseUri)/api/results/?scan-id=$scanId&offset=$($this.Offset)&limit=$($this.Limit)"
             
-            $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers } $conn
+            $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
         
             if ($this.Offset -eq 0) { $this.TotalCount = $response.totalCount }
 
@@ -1981,7 +1995,7 @@ class SeverityCounters {
         
         foreach ($scan in $ScansHash.values) {    
             $uri = "$($conn.BaseURI)/api/scan-summary/?scan-ids=$($scan.ScanID)"
-            $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers } $conn
+            $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
             $this.SeverityCountersHash.Add($scan.ScanID, [SeverityCount]::new($response.scansSummaries))
         }
     }
