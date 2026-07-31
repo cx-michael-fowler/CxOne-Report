@@ -2300,8 +2300,11 @@ class ScanSummaries {
         
         foreach ($scan in $ScansHash.values) {    
             $uri = "$($conn.BaseURI)/api/scan-summary/?scan-ids=$($scan.ScanID)"
-            $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn
-            $this.ScanSummariesHash.Add($scan.ScanID, [ScanSummary]::new($response.scansSummaries))
+            try {
+				$response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers -UseBasicParsing } $conn -noerror
+            	$this.ScanSummariesHash.Add($scan.ScanID, [ScanSummary]::new($response.scansSummaries))
+			}
+			catch {}
         }
     }
 
