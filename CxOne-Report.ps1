@@ -21,8 +21,8 @@ Report
     
 
 .Notes
-Version:     2.0
-Date:        24/07/2026
+Version:     2.1
+Date:        11/11/2026
 Written by:  Michael Fowler
 Contact:     michael.fowler@checkmarx.com
 
@@ -32,6 +32,7 @@ Version    Detail
 1.0        Original version
 1.1        Updated to rename Secrets to SSCS
 2.0        Added languages and state data
+2.1		   Removed packages from counters
 
   
 .PARAMETER help
@@ -247,13 +248,6 @@ Begin {
                 Sca_Low = $_.Value.Sca.Severities.Low
                 Sca_Info = $_.Value.Sca.Severities.Info
 
-                Packages_Total_Vulnerabilties = $_.Value.Packages.Severities.Total
-                Packages_Critical = $_.Value.Packages.Severities.Critical
-                Packages_High = $_.Value.Packages.Severities.High
-                Packages_Medium = $_.Value.Packages.Severities.Medium
-                Packages_Low = $_.Value.Packages.Severities.Low
-                Packages_Info = $_.Value.Packages.Severities.Info
-
                 Api_Total_Vulnerabilties = $_.Value.Api.Severities.Total
                 Api_Critical = $_.Value.Api.Severities.Critical
                 Api_High = $_.Value.Api.Severities.High
@@ -313,12 +307,6 @@ Begin {
                 Sca_Urgent = $_.Value.Sca.States.Urgent
                 Sca_NotExploitable = $_.Value.Sca.States.NotExploitable
                 Sca_ProposedNotExploitable = $_.Value.Sca.States.ProposedNotExploitable
-
-                Packages_Confirmed  = $_.Value.Packages.States.Confirmed
-                Packages_ToVerify = $_.Value.Packages.States.ToVerify
-                Packages_Urgent = $_.Value.Packages.States.Urgent
-                Packages_NotExploitable = $_.Value.Packages.States.NotExploitable
-                Packages_ProposedNotExploitable = $_.Value.Packages.States.ProposedNotExploitable
 
                 Api_Confirmed  = $_.Value.Api.States.Confirmed
                 Api_ToVerify = $_.Value.Api.States.ToVerify
